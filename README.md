@@ -1,8 +1,12 @@
 # Budna
 
-A portable plugin for researching second-hand purchases. It connects to Budna’s public, read-only marketplace MCP server and bundles six Recommerce skills for comparison, complete kits, inspection, collection planning, keep-or-replace decisions, and reassessment. No account, API key, local server, or runtime dependencies are required for the default connection.
+Find and compare new and pre-owned items.
 
-The plugin researches and explains options. It cannot bid, buy, reserve items, or contact sellers. Prices, availability, contents, and condition need current evidence; a recommendation is not a reservation or an inspection.
+Discover new and pre-owned items on Budna that fit your needs and budget. Compare options, check condition and compatibility, and plan pickup or delivery before you decide.
+
+The plugin connects to Budna’s public, read-only marketplace MCP server and bundles six Recommerce skills for comparison, complete kits, inspection, collection planning, keep-or-replace decisions, and reassessment. No account, API key, local server, or runtime dependencies are required for the default connection.
+
+The plugin compares and explains options. It cannot bid, buy, reserve items, or contact sellers. Prices, availability, contents, and condition need current evidence; a recommendation is not a reservation or an inspection.
 
 ## Install
 
