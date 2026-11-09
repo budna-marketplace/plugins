@@ -50,15 +50,15 @@ Claude and Codex package validation, Gemini CLI installation and MCP connection,
 
 ## Use
 
-- “Find a complete used cordless drill delivered to Gothenburg for under 1,000 SEK.”
-- “Compare these listings by fit, delivered cost, and decisive unknowns.”
-- “Prepare an inspection checklist for this second-hand listing.”
+- “Find a complete cordless drill, new or pre-owned, delivered to Gothenburg for under 1,000 SEK.”
+- “Compare these listings by fit, complete cost, and unresolved condition.”
+- “Prepare an inspection checklist for this listing.”
 
 | Skill | Purpose |
 | --- | --- |
 | [Buy](skills/recommerce-buy/SKILL.md) | Find and compare suitable listings. |
 | [Kits](skills/recommerce-kits/SKILL.md) | Assemble a complete, compatible setup within one budget. |
-| [Inspect](skills/recommerce-inspect/SKILL.md) | Prepare checks for a specific used item. |
+| [Inspect](skills/recommerce-inspect/SKILL.md) | Prepare checks for a specific item. |
 | [Collect](skills/recommerce-collect/SKILL.md) | Assess transport, access, and collection costs. |
 | [Keep](skills/recommerce-keep/SKILL.md) | Compare keeping or repairing with replacing. |
 | [Second Look](skills/recommerce-second-look/SKILL.md) | Recheck a prior recommendation against new evidence. |
@@ -71,7 +71,7 @@ Personal account access is optional and is not enabled by this package. Follow [
 
 ## Maintain
 
-The six skill folders are unchanged copies of [Recommerce](https://github.com/budna-marketplace/recommerce) at commit [`ebb44ab9629148beb9763a3517a6bd860a11a7e4`](https://github.com/budna-marketplace/recommerce/tree/ebb44ab9629148beb9763a3517a6bd860a11a7e4/skills), including their references and MIT licenses. Keep upstream as the source of truth: update complete folders from an explicitly selected commit, inspect the changes, and update this provenance when refreshing the bundle. The installed bundle contains regular files; no submodules or build step are required.
+The six skill folders are unchanged copies of [Recommerce](https://github.com/budna-marketplace/recommerce) at commit [`2126a05d09a303e6a2a5815a51aee4f1eb248e53`](https://github.com/budna-marketplace/recommerce/tree/2126a05d09a303e6a2a5815a51aee4f1eb248e53/skills), including their references and MIT licenses. Keep upstream as the source of truth: update complete folders from an explicitly selected commit, inspect the changes, and update this provenance when refreshing the bundle. The installed bundle contains regular files; no submodules or build step are required.
 
 The client manifests share the same plugin name, version, skills, and public MCP endpoint. Keep every versioned manifest aligned for a release. Validate with a current Claude Code release:
 

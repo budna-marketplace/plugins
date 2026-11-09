@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "budna",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Find and compare new and pre-owned items.",
   "author": {
     "name": "Budna Marketplace AB",

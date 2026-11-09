@@ -1,6 +1,6 @@
 {
   "name": "budna",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Find and compare new and pre-owned items.",
   "author": {
     "name": "Budna Marketplace AB",
@@ -24,9 +24,9 @@
     "supportURL": "https://connect.budna.se/contact-us",
     "termsOfServiceURL": "https://legal.budna.se/terms-of-service",
     "defaultPrompt": [
-      "Find a complete used cordless drill delivered to Gothenburg for under 1,000 SEK.",
-      "Compare these used listings by fit, complete cost, and unresolved condition.",
-      "Prepare an inspection checklist for this second-hand listing."
+      "Find a complete cordless drill, new or pre-owned, delivered to Gothenburg for under 1,000 SEK.",
+      "Compare these listings by fit, complete cost, and unresolved condition.",
+      "Prepare an inspection checklist for this listing."
     ],
     "composerIcon": "./assets/icon.png",
     "logo": "./assets/icon.png",
@@ -38,7 +38,7 @@
         "test_cases": {
           "positive": [
             {
-              "description": "Search suggestions and public listing search with honest empty-result handling. The public search and suggestion tools passed read-only production smoke checks; populated listing research and ChatGPT UI execution were not verified.",
+              "description": "Search suggestions and public listing search with honest empty-result handling. The public search and suggestion tools passed read-only production smoke checks, and an anonymous browser connector returned an honest empty search result in the UI. Populated listing comparison and the full plugin ChatGPT UI workflow remain unverified.",
               "prompt": "Find a used cordless drill on Budna for under 1,000 SEK delivered to Gothenburg. Start from current public search suggestions and listings, use public brand or location data if needed, and tell me clearly if no candidates are available.",
               "tools_triggered": "get_search_suggestions, search_listings; get_brands and get_locations when needed",
               "expected_behavior": "Search the current public catalog without authentication or write actions. Use only IDs and filter values returned by the tools. If results are empty, report that no current candidates were found instead of inventing listings. If candidates exist, distinguish item price from complete delivered cost and flag any unverified delivery costs or condition."
@@ -70,19 +70,19 @@
           ],
           "negative": [
             {
-              "description": "A transaction-only request must not trigger Budna research tools or attempt an unsupported purchase, bid, or reservation.",
-              "prompt": "Without researching alternatives, place a 500 SEK bid, buy the item immediately, and reserve it for me on Budna.",
-              "expected_behavior": "Do not call Budna MCP tools or claim any external action succeeded. Explain that the public plugin cannot bid, buy, or reserve items. Any later research must follow a separate user request."
+              "description": "A transaction-only request must not trigger Budna discovery tools or attempt an unsupported purchase, bid, or reservation.",
+              "prompt": "Without comparing alternatives, place a 500 SEK bid, buy the item immediately, and reserve it for me on Budna.",
+              "expected_behavior": "Do not call Budna MCP tools or claim any external action succeeded. Explain that the public plugin cannot bid, buy, or reserve items. Any later listing comparison must follow a separate user request."
             },
             {
               "description": "A request to contact a seller or change account data must not trigger the public read-only plugin.",
               "prompt": "Send the seller a private message, add the listing to my watchlist, and update my Budna account details.",
-              "expected_behavior": "Do not call Budna MCP tools, contact a seller, request account credentials, or claim account changes. Explain that this package exposes public research and does not provide these account or write operations."
+              "expected_behavior": "Do not call Budna MCP tools, contact a seller, request account credentials, or claim account changes. Explain that this package exposes public marketplace information and does not provide these account or write operations."
             },
             {
-              "description": "An unrelated weather or programming request must not activate Budna marketplace research.",
+              "description": "An unrelated weather or programming request must not activate Budna marketplace discovery.",
               "prompt": "Explain TypeScript generic types and tell me whether it will rain tomorrow in Stockholm.",
-              "expected_behavior": "Do not activate Budna research skills or call Budna MCP tools. The request does not need second-hand marketplace information."
+              "expected_behavior": "Do not activate Budna skills or call Budna MCP tools. The request does not need marketplace information."
             }
           ]
         }
