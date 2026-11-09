@@ -138,7 +138,7 @@ jobs:
                   "Platform assets are published after their environments approve. "
                   "Directory listings require separate submission and provider review.\n"
               )
-              gh("release", "create", tag, "--verify-tag", "--draft", "--title", f"Budna {tag}", "--notes", notes)
+              gh("release", "create", tag, "--verify-tag", "--draft", "--title", tag, "--notes", notes)
               release = json.loads(gh("release", "view", tag, "--json", "isDraft,isPrerelease,assets"))
           else:
               release = json.loads(existing.stdout)
