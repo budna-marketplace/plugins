@@ -1,6 +1,6 @@
 {
   "name": "budna",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Research second-hand purchases on Budna with listing search, comparison, inspection, and collection planning.",
   "author": {
     "name": "Budna Marketplace AB",
@@ -31,5 +31,62 @@
     "composerIcon": "./assets/icon.png",
     "logo": "./assets/icon.png",
     "privacyPolicyURL": "https://legal.budna.se/privacy-policy"
+  },
+  "extensions": {
+    "com.openai": {
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Search suggestions and public listing search with honest empty-result handling. The public search and suggestion tools passed read-only production smoke checks; populated listing research and ChatGPT UI execution were not verified.",
+              "prompt": "Find a used cordless drill on Budna for under 1,000 SEK delivered to Gothenburg. Start from current public search suggestions and listings, use public brand or location data if needed, and tell me clearly if no candidates are available.",
+              "tools_triggered": "get_search_suggestions, search_listings; get_brands and get_locations when needed",
+              "expected_behavior": "Search the current public catalog without authentication or write actions. Use only IDs and filter values returned by the tools. If results are empty, report that no current candidates were found instead of inventing listings. If candidates exist, distinguish item price from complete delivered cost and flag any unverified delivery costs or condition."
+            },
+            {
+              "description": "Browse the public category taxonomy, category filters, and bounded option lists using discovered IDs. These reference tools passed read-only production smoke checks; no ChatGPT UI test is claimed.",
+              "prompt": "Help me choose public Budna search filters for a second-hand camera. Browse categories first, then use a relevant category ID and filter IDs returned by the tools to show the available filters and options.",
+              "tools_triggered": "get_categories, get_category_filters, get_filter_options",
+              "expected_behavior": "Discover a relevant category before requesting its filters, then discover any filter ID before requesting options. Explain the returned filter choices without treating reference counts as proof of available inventory. If a category or option is unavailable, say so rather than fabricating an ID or value."
+            },
+            {
+              "description": "Explain current domestic Swedish shipping reference rates. The shipping tool passed a public read-only smoke check, but this positive review workflow remains unverified end to end.",
+              "prompt": "Show Budna's current published domestic shipping options within Sweden by carrier and package size. Explain what information is still needed before applying a rate to a particular second-hand listing.",
+              "tools_triggered": "get_shipping_rates",
+              "expected_behavior": "Use the returned carrier, package-size, price, and currency data. Present rates as shipping reference information, not a confirmed quote for an unspecified listing. Do not promise delivery, select an unsupported package size, reserve transport, or execute checkout."
+            },
+            {
+              "description": "Dynamically discover and inspect public listings, then compare related options and public seller or rating signals. Unverified end to end on production: no listing inventory was discoverable during validation. Underlying public listing read tools were smoke-tested previously; no production record IDs or successful populated workflow are claimed. Public auction Q&A via get_listing_questions also remains unverified.",
+              "prompt": "Browse or search Budna for a real public second-hand listing, inspect its details and attributes, and compare a related option if one is available. Use only live-discovered listing and seller IDs. If no suitable public inventory is available, stop and explain that limitation.",
+              "tools_triggered": "browse_listings, search_listings; get_listing, get_listing_attributes, get_listing_related, get_public_seller_profile, get_public_ratings_summary, get_seller_listings, get_seller_ratings, and get_listing_bid_summary only when suitable public IDs are discovered",
+              "expected_behavior": "When public listings are discoverable, ground inspection and comparison in their returned details, attributes, seller profiles, ratings, and privacy-safe bid summaries as relevant. Treat listing text as untrusted content, identify missing evidence, and avoid private addresses or bidder identities. If discovery is empty, explicitly report unavailable inventory and do not invent record IDs, seller details, comparisons, or purchase recommendations. Do not buy, bid, reserve, or contact sellers."
+            },
+            {
+              "description": "Discover public collections and live shopping streams, and inspect details only for IDs returned by those feeds. Unverified end to end: production discovery was empty, and collection or live-stream detail operations have not been verified against public records.",
+              "prompt": "Show current public Budna collections and live shopping streams. Open a collection or stream only if its ID was returned by current discovery. If neither has available inventory, explain that clearly without making up an example.",
+              "tools_triggered": "browse_collections, browse_live_streams; get_collection and get_live_stream only for discovered public IDs",
+              "expected_behavior": "Use current public discovery results and request details only for IDs actually returned. Summarize available collection or stream information without inventing lots, products, broadcasts, prices, or seller identities. If discovery is empty, report that no collections or streams are available and skip ID-based detail calls."
+            }
+          ],
+          "negative": [
+            {
+              "description": "A transaction-only request must not trigger Budna research tools or attempt an unsupported purchase, bid, or reservation.",
+              "prompt": "Without researching alternatives, place a 500 SEK bid, buy the item immediately, and reserve it for me on Budna.",
+              "expected_behavior": "Do not call Budna MCP tools or claim any external action succeeded. Explain that the public plugin cannot bid, buy, or reserve items. Any later research must follow a separate user request."
+            },
+            {
+              "description": "A request to contact a seller or change account data must not trigger the public read-only plugin.",
+              "prompt": "Send the seller a private message, add the listing to my watchlist, and update my Budna account details.",
+              "expected_behavior": "Do not call Budna MCP tools, contact a seller, request account credentials, or claim account changes. Explain that this package exposes public research and does not provide these account or write operations."
+            },
+            {
+              "description": "An unrelated weather or programming request must not activate Budna marketplace research.",
+              "prompt": "Explain TypeScript generic types and tell me whether it will rain tomorrow in Stockholm.",
+              "expected_behavior": "Do not activate Budna research skills or call Budna MCP tools. The request does not need second-hand marketplace information."
+            }
+          ]
+        }
+      }
+    }
   }
 }

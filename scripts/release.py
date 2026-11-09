@@ -113,7 +113,7 @@ def validate_snapshot(files, tag):
     allowed_fields = {
         "plugin.json": metadata_fields | {"$schema"},
         ".claude-plugin/plugin.json": metadata_fields | {"icon", "privacyPolicyUrl"},
-        ".codex-plugin/plugin.json": metadata_fields | {"skills", "mcpServers", "interface"},
+        ".codex-plugin/plugin.json": metadata_fields | {"skills", "mcpServers", "interface", "extensions"},
         "gemini-extension.json": {"name", "version", "description", "mcpServers"},
     }
     for name, manifest in manifests.items():
@@ -156,6 +156,27 @@ def validate_snapshot(files, tag):
     require(interface.get("capabilities") == ["Read"], "Codex must describe only the public read capability")
     for field in ("composerIcon", "logo"):
         file_reference(files, interface.get(field))
+    extensions = codex.get("extensions", {})
+    require(isinstance(extensions, dict) and extensions.keys() == {"com.openai"},
+            "OpenAI review extension required")
+    openai = extensions["com.openai"]
+    require(isinstance(openai, dict) and openai.keys() == {"review"}, "OpenAI review metadata required")
+    review = openai["review"]
+    require(isinstance(review, dict) and review.keys() == {"test_cases"}, "OpenAI review cases required")
+    cases = review["test_cases"]
+    require(isinstance(cases, dict) and cases.keys() == {"positive", "negative"},
+            "OpenAI positive and negative review cases required")
+    for kind, count in (("positive", 5), ("negative", 3)):
+        require(isinstance(cases[kind], list) and len(cases[kind]) == count,
+                f"OpenAI review requires exactly {count} {kind} cases")
+        for case in cases[kind]:
+            fields = {"description", "prompt", "expected_behavior"}
+            if kind == "positive":
+                fields.add("tools_triggered")
+            require(isinstance(case, dict) and case.keys() == fields,
+                    f"invalid OpenAI {kind} review case fields")
+            require(all(isinstance(case[field], str) and case[field].strip() for field in fields),
+                    f"nonempty OpenAI {kind} review case fields required")
     expected_compat = {"mcpServers": {"budna": {"type": "http", "url": PUBLIC_ENDPOINT}}}
     require(read_json(files, ".mcp.json") == expected_compat,
             "compatibility MCP must use only the public endpoint without credentials")
@@ -247,9 +268,14 @@ def zip_bytes(files):
 
 def target_snapshot(files, target):
     require(target in TARGET_FILES, f"unknown target: {target}")
-    return {name: content for name, content in files.items()
-            if name in TARGET_FILES[target] or name in COMMON_FILES
-            or name.startswith(("assets/", "skills/"))}
+    result = {name: content for name, content in files.items()
+              if name in TARGET_FILES[target] or name in COMMON_FILES
+              or name.startswith(("assets/", "skills/"))}
+    if target == "openai":
+        mcp = read_json(result, "mcp.json")
+        mcp["mcpServers"]["budna"]["extensions"] = {"com.openai": {"auth": {"type": "none"}}}
+        result["mcp.json"] = (json.dumps(mcp, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    return result
 
 
 def digest(content):

@@ -230,6 +230,32 @@ test('OpenAI MCP review requires all four public listing URLs', t => {
   }
 });
 
+test('OpenAI review includes five positive and three negative cases', t => {
+  const f = fixture(t);
+  const manifest = '.codex-plugin/plugin.json';
+  const original = readFileSync(join(f.source, manifest));
+  f.build();
+  const bundled = readZip(join(f.out, archiveName('openai'))).find(item => item.name === manifest)!;
+  const metadata = JSON.parse(bundled.content.toString());
+  const review = metadata.extensions['com.openai'].review;
+  assert.equal(review.test_cases.positive.length, 5);
+  assert.equal(review.test_cases.negative.length, 3);
+  assert.equal(review.demo_recording_url, undefined, 'a recording URL must not be invented');
+  const changes: ((data: Json) => void)[] = [
+    data => { delete data.extensions; },
+    data => { data.extensions['com.openai'].review.test_cases.positive.pop(); },
+    data => { data.extensions['com.openai'].review.test_cases.negative.pop(); },
+    data => { data.extensions['com.openai'].review.test_cases.positive[0].prompt = ''; },
+    data => { delete data.extensions['com.openai'].review.test_cases.positive[0].tools_triggered; },
+    data => { data.extensions['com.openai'].review.test_cases.negative[0].expected_behavior = ''; },
+  ];
+  for (const change of changes) {
+    f.updateJson(manifest, change);
+    f.run(['check', '--tag', TAG], /OpenAI.*review|OpenAI.*cases/);
+    f.write(manifest, original);
+  }
+});
+
 test('checkout symlinks and submodules are rejected', t => {
   const f = fixture(t);
   const path = join(f.source, 'assets/icon.svg');
@@ -272,11 +298,46 @@ test('export uses the complete pinned payload and target manifest subset', t => 
       const path = href.split(/[?#]/)[0];
       if (path) assert.ok(entries.has(posix.normalize(decodeURIComponent(path))), `broken README link in ${target}: ${href}`);
     }
-    for (const item of common) assert.deepEqual(entries.get(item.name), item.content);
+    for (const item of common) {
+      if (target === 'openai' && item.name === 'mcp.json') {
+        const expected = JSON.parse(item.content.toString());
+        expected.mcpServers.budna.extensions = { 'com.openai': { auth: { type: 'none' } } };
+        assert.deepEqual(JSON.parse(entries.get(item.name)!.toString()), expected);
+      } else {
+        assert.deepEqual(entries.get(item.name), item.content);
+      }
+    }
     if (target === 'openai') {
       const metadata = JSON.parse(entries.get('.codex-plugin/plugin.json')!.toString());
       assert.ok(entries.has(metadata.mcpServers.slice(2)));
     }
+  }
+});
+
+test('OpenAI no-auth cannot be removed or changed by rehashing a target ZIP', t => {
+  const f = fixture(t);
+  f.build();
+  const name = archiveName('openai');
+  const target = join(f.out, name);
+  const entries = readZip(target);
+  const originalChecksums = readFileSync(join(f.out, 'SHA256SUMS'), 'utf8');
+  const changes: ((data: Json) => void)[] = [
+    data => { delete data.mcpServers.budna.extensions; },
+    data => { data.mcpServers.budna.extensions['com.openai'].auth.type = 'oauth'; },
+    data => { data.mcpServers.budna.extensions['com.openai'].auth.baseScopes = ['account:read']; },
+  ];
+  for (const change of changes) {
+    const modified = entries.map(item => {
+      if (item.name !== 'mcp.json') return item;
+      const data = JSON.parse(item.content.toString());
+      change(data);
+      return { ...item, content: Buffer.from(JSON.stringify(data)) };
+    });
+    const bytes = zipBytes(modified);
+    writeFileSync(target, bytes);
+    writeFileSync(join(f.out, 'SHA256SUMS'), originalChecksums.split('\n')
+      .map(line => line.endsWith(`  ${name}`) ? `${digest(bytes)}  ${name}` : line).join('\n'));
+    f.run(['verify', '--tag', TAG, '--directory', f.out], /target ZIP checksum mismatch/);
   }
 });
 
