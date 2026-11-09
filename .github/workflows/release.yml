@@ -123,6 +123,9 @@ jobs:
       fail-fast: false
       matrix:
         target: [claude, openai, gemini, cursor, copilot, grok]
+    concurrency:
+      group: ${{ matrix.target == 'claude' && 'claude-runtime-branch' || format('release-{0}-{1}', needs.verify.outputs.tag, matrix.target) }}
+      cancel-in-progress: false
     environment:
       name: ${{ matrix.target }}
     env:
@@ -171,6 +174,15 @@ jobs:
           peeled_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG^{}" | cut -f1)"
           test "${peeled_tag:-$current_tag}" = "$RELEASE_COMMIT"
           node scripts/github-release.mts publish-assets --directory exported
+      - name: Publish verified Claude runtime branch
+        if: matrix.target == 'claude'
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG" | cut -f1)"
+          peeled_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG^{}" | cut -f1)"
+          test "${peeled_tag:-$current_tag}" = "$RELEASE_COMMIT"
+          node scripts/claude-runtime.mts publish --source "exported/budna-$RELEASE_TAG-claude.zip" --checksums dist/SHA256SUMS
       - name: Write platform publication summary
         shell: bash
         run: |

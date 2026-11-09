@@ -129,6 +129,8 @@ Publishing the draft starts six jobs gated by the `claude`, `openai`, `gemini`, 
 
 After approval, each job verifies the original release assets against the tagged source and exports its platform ZIP and checksum. Existing assets are never overwritten: a retry must match the original bytes. Release-tag updates and deletions are blocked by the repository’s Release tags ruleset. Keep GitHub’s release-asset immutability setting off for this flow because platform assets are attached after publication; the workflow enforces byte consistency itself.
 
+The Claude job also publishes the verified Claude ZIP contents to the generated `claude` branch for directory review. Configure the directory submission to track that branch at the repository root; keep development and marketplace installation on `main`. Each branch commit records the release tag, source commit, and archive checksum. Publication uses fast-forward updates, rejects older versions or changed bytes for an existing version, and verifies every published file against the archive. Do not edit the generated branch manually.
+
 The GitHub release exposes installable bundles. It does not approve or publish a provider directory listing. Complete the relevant portal submission, gallery indexing, or upstream catalog review from the table above. The tested extension has the repository topic `gemini-cli-extension`, which makes it eligible for Gemini CLI’s daily gallery indexing.
 
 Public listings require their own connection tests, listing assets, and review; pushing this repository does not publish a listing.
