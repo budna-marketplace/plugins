@@ -93,7 +93,7 @@ OpenCode's [MCP configuration](https://opencode.ai/docs/mcp-servers/) and [skill
 
 ## Maintain
 
-The six skill folders are unchanged copies of [Recommerce](https://github.com/budna-marketplace/recommerce) at commit [`2126a05d09a303e6a2a5815a51aee4f1eb248e53`](https://github.com/budna-marketplace/recommerce/tree/2126a05d09a303e6a2a5815a51aee4f1eb248e53/skills), including their references and MIT licenses. Keep upstream as the source of truth: update complete folders from an explicitly selected commit, inspect the changes, and update this provenance when refreshing the bundle. The installed bundle contains regular files; no submodules or build step are required.
+The six skill folders are unchanged copies of [Recommerce](https://github.com/budna-marketplace/recommerce) at commit [`31694a65b30a20103ff98a03ab435d753e0dac68`](https://github.com/budna-marketplace/recommerce/tree/31694a65b30a20103ff98a03ab435d753e0dac68/skills), including their references and MIT licenses. Keep upstream as the source of truth: update complete folders from an explicitly selected commit, inspect the changes, and update this provenance when refreshing the bundle. The installed bundle contains regular files; no submodules or build step are required.
 
 The client manifests share the same plugin name, version, skills, and public MCP endpoint. Keep every versioned manifest aligned for a release. Validate with a current Claude Code release:
 
