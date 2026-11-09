@@ -20,25 +20,27 @@ codex plugin marketplace add .
 codex plugin add budna@budna-marketplace
 ```
 
-Start a new session after installation. To install from GitHub after this repository has been committed and pushed, replace `.` in the marketplace command with `budna-marketplace/plugins`.
+Start a new session after installation. To install from GitHub, replace `.` in the marketplace command with `budna-marketplace/plugins`.
 
 In Claude web or desktop, add this repository as a marketplace from **Customize → Plugins → Add → Add marketplace**. Add the bundled connector from the plugin’s **Connectors** tab. A repository marketplace is separate from a reviewed public directory listing.
 
 ## Clients and distribution
 
-Claude and Codex packaging and local installation have been checked. The other formats below follow their clients’ documented interfaces and still need installation and live task testing. Public listings require a separate submission or catalog review.
+Claude and Codex package validation, Gemini CLI installation and MCP connection, and Copilot CLI installation have been checked. Other clients still need installation and live task testing. Public listings require a separate submission or catalog review.
 
 | Client | Package or connection | Public distribution |
 | --- | --- | --- |
 | Claude | Claude plugin and marketplace manifests; install above. | Submit the connector and plugin through [Claude’s developer portal](https://claude.ai/directory/manage). |
 | Codex | Codex compatibility manifest; install above. | Submit the endpoint and skills together through [With MCP](https://developers.openai.com/plugins/guides/submit-claude-plugin#submit-a-plugin-with-a-remote-mcp-server). |
 | Gemini CLI | [gemini-extension.json](gemini-extension.json) and the shared skills; `gemini extensions install .`. | Follow the [extension release and gallery instructions](https://geminicli.com/docs/extensions/releasing/). |
+| Gemini app and Search | The public MCP endpoint; this is separate from Gemini CLI. | Apply for the [Connected Apps preview](https://developers.google.com/connected-apps), then configure, test, and submit in Connected Console. |
 | Cursor | Root [plugin.json](plugin.json), [mcp.json](mcp.json), and skills use the supported [Agent Plugins format](https://cursor.com/docs/reference/plugins). | Use the shared [Grok Bot and Cursor submission form](https://x.ai/bot/marketplace/submit-a-plugin). |
 | GitHub Copilot CLI | The same portable package; `copilot plugin install .` is a documented [local install](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference). | Propose an [external plugin entry](https://github.com/github/awesome-copilot/blob/main/CONTRIBUTING.md#adding-external-plugins). |
 | Grok Build | Its [plugin guide](https://github.com/xai-org/grok-build/blob/main/crates/codegen/xai-grok-pager/docs/user-guide/09-plugins.md) accepts Claude-compatible manifests. | Submit a pinned source commit to the [official plugin catalog](https://github.com/xai-org/plugin-marketplace/blob/main/CONTRIBUTING.md). |
 | Grok Bot | Submit the public MCP URL or repository; in-app testing is required. | Use the shared [Grok Bot and Cursor form](https://x.ai/bot/marketplace/submit-a-plugin). |
 | Grok | Add the public endpoint through [Connectors → New Connector → Custom](https://docs.x.ai/grok/connectors). | The shared submission form still labels Grok marketplace distribution “coming soon.” |
 | Cline | Use the public MCP endpoint and install the skills separately; this bundle has not been tested as a Cline plugin. | Propose separate MCP and skill entries through the [Cline catalog](https://github.com/cline/marketplace/blob/main/CONTRIBUTING.md). |
+| Perplexity Computer | Import this public repository or upload the portable ZIP, then confirm all six skills and the Budna connector appear. | [Custom plugin import](https://www.perplexity.ai/help-center/en/articles/2026100802-create-or-upload-a-custom-plugin) supports personal and organization distribution. A public catalog submission route has not been verified. |
 
 ## Use
 
@@ -99,7 +101,7 @@ Publishing the draft starts six jobs gated by the `claude`, `openai`, `gemini`, 
 
 After approval, each job verifies the original release assets against the tagged source and exports its platform ZIP and checksum. Existing assets are never overwritten: a retry must match the original bytes. Release-tag updates and deletions are blocked by the repository’s Release tags ruleset. Keep GitHub’s release-asset immutability setting off for this flow because platform assets are attached after publication; the workflow enforces byte consistency itself.
 
-The GitHub release exposes installable bundles. It does not approve or publish a provider directory listing. Complete the relevant portal submission, gallery indexing, or upstream catalog review from the table above. Gemini’s gallery additionally needs the repository topic `gemini-cli-extension`; add it only once the extension has been tested and is ready for discovery.
+The GitHub release exposes installable bundles. It does not approve or publish a provider directory listing. Complete the relevant portal submission, gallery indexing, or upstream catalog review from the table above. The tested extension has the repository topic `gemini-cli-extension`, which makes it eligible for Gemini CLI’s daily gallery indexing.
 
 Public listings require their own connection tests, listing assets, and review; pushing this repository does not publish a listing.
 
