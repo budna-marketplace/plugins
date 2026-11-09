@@ -53,9 +53,9 @@ jobs:
       - name: Check tagged package
         env:
           RELEASE_TAG: ${{ steps.tag.outputs.tag }}
-        run: python3 scripts/release.py check --tag "$RELEASE_TAG"
+        run: node scripts/release.mts check --tag "$RELEASE_TAG"
       - name: Test release packaging
-        run: node --test tests/release.test.mts
+        run: node --test tests/*.test.mts
       - name: Fingerprint package from the approved tag
         id: fingerprint
         env:
@@ -63,20 +63,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/release.py build --tag "$RELEASE_TAG" --out verified
-          python3 - <<'PY'
-          import hashlib
-          import os
-          import pathlib
-          tag = os.environ["RELEASE_TAG"]
-          paths = {
-              "archive_sha256": pathlib.Path("verified") / f"budna-{tag}.zip",
-              "checksums_sha256": pathlib.Path("verified/SHA256SUMS"),
-          }
-          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              for key, path in paths.items():
-                  print(f"{key}={hashlib.sha256(path.read_bytes()).hexdigest()}", file=output)
-          PY
+          node scripts/release.mts build --tag "$RELEASE_TAG" --out verified
+          node scripts/github-release.mts fingerprint --directory verified
 
   draft:
     if: github.event_name == 'push'
@@ -96,8 +84,12 @@ jobs:
         with:
           ref: ${{ needs.verify.outputs.commit }}
           persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.2'
+          package-manager-cache: false
       - name: Build release archives
-        run: python3 scripts/release.py build --tag "$RELEASE_TAG" --out dist
+        run: node scripts/release.mts build --tag "$RELEASE_TAG" --out dist
       - name: Recheck live tag
         shell: bash
         run: |
@@ -109,54 +101,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import hashlib
-          import json
-          import os
-          import pathlib
-          import subprocess
-          import tempfile
-
-          tag = os.environ["RELEASE_TAG"]
-          repository = os.environ["GITHUB_REPOSITORY"]
-          paths = (pathlib.Path("dist") / f"budna-{tag}.zip", pathlib.Path("dist/SHA256SUMS"))
-          for path, expected in zip(paths, (os.environ["ARCHIVE_SHA256"], os.environ["CHECKSUMS_SHA256"])):
-              if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
-                  raise SystemExit(f"Build differs from verified tagged source: {path.name}")
-
-          def gh(*args):
-              return subprocess.run(["gh", *args, "--repo", repository], check=True, text=True, capture_output=True).stdout
-
-          existing = subprocess.run(
-              ["gh", "release", "view", tag, "--repo", repository, "--json", "isDraft,isPrerelease,assets"],
-              text=True, capture_output=True,
-          )
-          if existing.returncode:
-              notes = (
-                  "Universal Budna plugin package and SHA-256 checksums.\n\n"
-                  "Publish this draft from GitHub to request the six environment-gated platform exports. "
-                  "Platform assets are published after their environments approve. "
-                  "Directory listings require separate submission and provider review.\n"
-              )
-              gh("release", "create", tag, "--verify-tag", "--draft", "--title", tag, "--notes", notes)
-              release = json.loads(gh("release", "view", tag, "--json", "isDraft,isPrerelease,assets"))
-          else:
-              release = json.loads(existing.stdout)
-          if release["isPrerelease"]:
-              raise SystemExit("A stable release tag cannot refer to a prerelease")
-          names = {asset["name"] for asset in release["assets"]}
-          for path in paths:
-              if path.name in names:
-                  with tempfile.TemporaryDirectory() as directory:
-                      gh("release", "download", tag, "--pattern", path.name, "--dir", directory)
-                      downloaded = pathlib.Path(directory) / path.name
-                      if hashlib.sha256(downloaded.read_bytes()).digest() != hashlib.sha256(path.read_bytes()).digest():
-                          raise SystemExit(f"Existing release asset differs: {path.name}")
-              elif release["isDraft"]:
-                  gh("release", "upload", tag, str(path))
-              else:
-                  raise SystemExit(f"Published release is missing its original draft asset: {path.name}")
-          PY
+          node scripts/github-release.mts prepare-draft --directory dist
       - name: Write draft handoff
         shell: bash
         run: |
@@ -194,6 +139,10 @@ jobs:
           ref: ${{ needs.verify.outputs.commit }}
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.2'
+          package-manager-cache: false
       - name: Recheck release after environment approval
         shell: bash
         run: |
@@ -203,37 +152,16 @@ jobs:
           test "${peeled_tag:-$current_tag}" = "$RELEASE_COMMIT"
           git merge-base --is-ancestor "$RELEASE_COMMIT" refs/remotes/origin/main
           gh release view "$RELEASE_TAG" --json databaseId,isDraft,isPrerelease,tagName > release.json
-          python3 - <<'PY'
-          import json
-          import os
-          import pathlib
-          release = json.loads(pathlib.Path("release.json").read_text())
-          if (release["isDraft"] or release["isPrerelease"]
-              or str(release["databaseId"]) != os.environ["RELEASE_ID"]
-              or release["tagName"] != os.environ["RELEASE_TAG"]):
-              raise SystemExit("Release identity or publication state changed")
-          PY
+          node scripts/github-release.mts verify-release --file release.json
       - name: Download original release bytes
         shell: bash
         run: |
           set -euo pipefail
           gh release download "$RELEASE_TAG" --pattern "budna-$RELEASE_TAG.zip" --pattern SHA256SUMS --dir dist
-          python3 - <<'PY'
-          import hashlib
-          import os
-          import pathlib
-          tag = os.environ["RELEASE_TAG"]
-          paths = {
-              "ARCHIVE_SHA256": pathlib.Path("dist") / f"budna-{tag}.zip",
-              "CHECKSUMS_SHA256": pathlib.Path("dist/SHA256SUMS"),
-          }
-          for key, path in paths.items():
-              if hashlib.sha256(path.read_bytes()).hexdigest() != os.environ[key]:
-                  raise SystemExit(f"Release asset differs from verified tagged source: {path.name}")
-          PY
+          node scripts/github-release.mts verify-download --directory dist
       - name: Verify and export platform package
         run: >-
-          python3 scripts/release.py export --tag "$RELEASE_TAG" --target "$RELEASE_TARGET"
+          node scripts/release.mts export --tag "$RELEASE_TAG" --target "$RELEASE_TARGET"
           --source "dist/budna-$RELEASE_TAG.zip" --checksums dist/SHA256SUMS --out exported
       - name: Publish platform assets without overwriting
         shell: bash
@@ -242,36 +170,7 @@ jobs:
           current_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG" | cut -f1)"
           peeled_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG^{}" | cut -f1)"
           test "${peeled_tag:-$current_tag}" = "$RELEASE_COMMIT"
-          python3 - <<'PY'
-          import hashlib
-          import json
-          import os
-          import pathlib
-          import subprocess
-          import tempfile
-
-          tag = os.environ["RELEASE_TAG"]
-          target = os.environ["RELEASE_TARGET"]
-          repository = os.environ["GITHUB_REPOSITORY"]
-
-          def gh(*args):
-              return subprocess.run(["gh", *args, "--repo", repository], check=True, text=True, capture_output=True).stdout
-
-          release = json.loads(gh("release", "view", tag, "--json", "databaseId,isDraft,isPrerelease,assets"))
-          if release["isDraft"] or release["isPrerelease"] or str(release["databaseId"]) != os.environ["RELEASE_ID"]:
-              raise SystemExit("Release identity or publication state changed")
-          names = {asset["name"] for asset in release["assets"]}
-          archive = pathlib.Path("exported") / f"budna-{tag}-{target}.zip"
-          for path in (archive, archive.with_suffix(".zip.sha256")):
-              if path.name in names:
-                  with tempfile.TemporaryDirectory() as directory:
-                      gh("release", "download", tag, "--pattern", path.name, "--dir", directory)
-                      downloaded = pathlib.Path(directory) / path.name
-                      if hashlib.sha256(downloaded.read_bytes()).digest() != hashlib.sha256(path.read_bytes()).digest():
-                          raise SystemExit(f"Existing platform asset differs: {path.name}")
-              else:
-                  gh("release", "upload", tag, str(path))
-          PY
+          node scripts/github-release.mts publish-assets --directory exported
       - name: Write platform publication summary
         shell: bash
         run: |

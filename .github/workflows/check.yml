@@ -25,6 +25,6 @@ jobs:
           node-version: '24.22.2'
           package-manager-cache: false
       - name: Check package
-        run: python3 scripts/release.py check
+        run: node scripts/release.mts check
       - name: Test release packaging
-        run: node --test tests/release.test.mts
+        run: node --test tests/*.test.mts
