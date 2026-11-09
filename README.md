@@ -32,7 +32,7 @@ Install Budna in Codex from this repository or the universal `budna-vX.Y.Z.zip` 
 
 ## Clients and distribution
 
-Claude and Codex package validation, Gemini CLI installation and MCP connection, and Copilot CLI installation have been checked. Other clients still need installation and live task testing. Public listings require a separate submission or catalog review.
+Claude and Codex have completed live skill and MCP tasks. Cursor desktop and CLI have completed a public shipping-rate task. Gemini CLI and OpenCode have discovered the six skills and connected to the MCP server; Copilot CLI direct repository installation has been checked. Discovery and connection checks do not establish live task coverage. Public listings require a separate submission or catalog review.
 
 | Client | Package or connection | Public distribution |
 | --- | --- | --- |
@@ -42,6 +42,8 @@ Claude and Codex package validation, Gemini CLI installation and MCP connection,
 | Gemini app and Search | The public MCP endpoint; this is separate from Gemini CLI. | Apply for the [Connected Apps preview](https://developers.google.com/connected-apps), then configure, test, and submit in Connected Console. |
 | Cursor | Root [plugin.json](plugin.json), [mcp.json](mcp.json), and skills use the supported [Agent Plugins format](https://cursor.com/docs/reference/plugins). | Use the shared [Grok Bot and Cursor submission form](https://x.ai/bot/marketplace/submit-a-plugin). |
 | GitHub Copilot CLI | The same portable package; `copilot plugin install .` is a documented [local install](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference). | Propose an [external plugin entry](https://github.com/github/awesome-copilot/blob/main/CONTRIBUTING.md#adding-external-plugins). |
+| VS Code / Copilot | The portable package follows VS Code's [Agent Plugins format](https://code.visualstudio.com/docs/agents/reference/agent-plugin-reference). Add this repository as a plugin marketplace; VS Code installation and live tasks remain unverified. | [Custom plugin marketplaces](https://code.visualstudio.com/docs/agent-customization/overview) provide direct distribution independently of public catalog acceptance. |
+| OpenCode | Configure the public MCP endpoint and the shared skills using the example below. OpenCode 2.2.6 discovered all six skills and connected without credentials; model-driven tasks remain unverified. | Share the configuration and skill files. OpenCode's executable [plugins](https://opencode.ai/docs/plugins/) use a different format; this bundle needs no executable OpenCode plugin. |
 | Grok Build | Its [plugin guide](https://github.com/xai-org/grok-build/blob/main/crates/codegen/xai-grok-pager/docs/user-guide/09-plugins.md) accepts Claude-compatible manifests. | Submit a pinned source commit to the [official plugin catalog](https://github.com/xai-org/plugin-marketplace/blob/main/CONTRIBUTING.md). |
 | Grok Bot | Submit the public MCP URL or repository; in-app testing is required. | Use the shared [Grok Bot and Cursor form](https://x.ai/bot/marketplace/submit-a-plugin). |
 | Grok | Add the public endpoint through [Connectors → New Connector → Custom](https://docs.x.ai/grok/connectors). | The shared submission form still labels Grok marketplace distribution “coming soon.” |
@@ -68,6 +70,26 @@ Claude and Codex package validation, Gemini CLI installation and MCP connection,
 The MCP configurations point to `https://api.budna.se/mcp`: [.mcp.json](.mcp.json) for Claude and Codex compatibility, [mcp.json](mcp.json) for Agent Plugins, and [gemini-extension.json](gemini-extension.json) for Gemini CLI. The connection exposes public marketplace data and interactive listing cards where the client supports MCP Apps. Other clients receive the text and structured-data output. The server is maintained separately in [budna-marketplace/mcp](https://github.com/budna-marketplace/mcp).
 
 Personal account access is optional and is not enabled by this package. Follow [Budna’s account connection instructions](https://github.com/budna-marketplace/mcp#connect-your-budna-account) to connect `https://api.budna.se/account/mcp` through OAuth. That resource also includes the public tools; use one Budna connection in a session to avoid duplicate tools. Each client signs in separately and the user chooses the account permissions.
+
+For OpenCode 2, run OpenCode from this checkout's root and add this configuration to `opencode.json`. Skill paths resolve from the active working directory. When using another project, change `./skills` to the absolute path of this bundle's skills directory. Merge these entries with existing settings:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": ["./skills"],
+  "mcp": {
+    "servers": {
+      "budna": {
+        "type": "remote",
+        "url": "https://api.budna.se/mcp",
+        "oauth": false
+      }
+    }
+  }
+}
+```
+
+OpenCode's [MCP configuration](https://opencode.ai/docs/mcp-servers/) and [skill discovery](https://opencode.ai/docs/skills/) are separate from its executable plugin system. No API key or OAuth login is needed for Budna's public endpoint.
 
 ## Maintain
 
