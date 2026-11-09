@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "budna",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Research second-hand purchases on Budna with listing search, comparison, inspection, and collection planning.",
   "author": {
     "name": "Budna Marketplace AB",

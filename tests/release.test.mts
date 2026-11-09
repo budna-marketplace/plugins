@@ -209,6 +209,27 @@ test('required metadata, schemas, and public defaults are enforced', t => {
   }
 });
 
+test('OpenAI MCP review requires all four public listing URLs', t => {
+  const f = fixture(t);
+  const manifest = '.codex-plugin/plugin.json';
+  const original = readFileSync(join(f.source, manifest));
+  const urls = {
+    websiteURL: 'https://budna.se',
+    supportURL: 'https://connect.budna.se/contact-us',
+    privacyPolicyURL: 'https://legal.budna.se/privacy-policy',
+    termsOfServiceURL: 'https://legal.budna.se/terms-of-service',
+  };
+  f.build();
+  const bundled = readZip(join(f.out, archiveName('openai'))).find(item => item.name === manifest)!;
+  const metadata = JSON.parse(bundled.content.toString());
+  for (const [field, url] of Object.entries(urls)) {
+    assert.equal(metadata.interface[field], url, `OpenAI bundle must include ${field}`);
+    f.updateJson(manifest, data => { delete data.interface[field]; });
+    f.run(['check', '--tag', TAG], new RegExp(`OpenAI ${field} required`));
+    f.write(manifest, original);
+  }
+});
+
 test('checkout symlinks and submodules are rejected', t => {
   const f = fixture(t);
   const path = join(f.source, 'assets/icon.svg');

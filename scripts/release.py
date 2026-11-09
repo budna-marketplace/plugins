@@ -145,8 +145,14 @@ def validate_snapshot(files, tag):
             "Codex must reference a bundled MCP configuration")
     file_reference(files, codex["mcpServers"])
     interface = codex.get("interface", {})
-    require(isinstance(interface, dict) and interface.get("privacyPolicyURL") ==
-            "https://legal.budna.se/privacy-policy", "Codex privacy policy required")
+    require(isinstance(interface, dict), "Codex interface required")
+    for field, expected in {
+        "websiteURL": "https://budna.se",
+        "supportURL": "https://connect.budna.se/contact-us",
+        "privacyPolicyURL": "https://legal.budna.se/privacy-policy",
+        "termsOfServiceURL": "https://legal.budna.se/terms-of-service",
+    }.items():
+        require(interface.get(field) == expected, f"OpenAI {field} required")
     require(interface.get("capabilities") == ["Read"], "Codex must describe only the public read capability")
     for field in ("composerIcon", "logo"):
         file_reference(files, interface.get(field))

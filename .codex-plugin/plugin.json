@@ -1,6 +1,6 @@
 {
   "name": "budna",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Research second-hand purchases on Budna with listing search, comparison, inspection, and collection planning.",
   "author": {
     "name": "Budna Marketplace AB",
@@ -21,6 +21,8 @@
       "Read"
     ],
     "websiteURL": "https://budna.se",
+    "supportURL": "https://connect.budna.se/contact-us",
+    "termsOfServiceURL": "https://legal.budna.se/terms-of-service",
     "defaultPrompt": [
       "Find a complete used cordless drill delivered to Gothenburg for under 1,000 SEK.",
       "Compare these used listings by fit, complete cost, and unresolved condition.",
