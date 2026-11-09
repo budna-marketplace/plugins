@@ -1,0 +1,13 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "budna",
+  "version": "0.1.6",
+  "description": "Find and compare new and pre-owned items.",
+  "author": {
+    "name": "Budna Marketplace AB",
+    "url": "https://budna.se"
+  },
+  "homepage": "https://budna.se",
+  "repository": "https://github.com/budna-marketplace/plugins",
+  "license": "MIT"
+}

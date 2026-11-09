@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "budna": {
+      "type": "http",
+      "url": "https://api.budna.se/mcp"
+    }
+  }
+}

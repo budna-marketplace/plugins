@@ -1,0 +1,17 @@
+{
+  "name": "budna",
+  "version": "0.1.6",
+  "description": "Find and compare new and pre-owned items.",
+  "author": {
+    "name": "Budna Marketplace AB",
+    "url": "https://budna.se"
+  },
+  "homepage": "https://budna.se",
+  "repository": "https://github.com/budna-marketplace/plugins",
+  "license": "MIT",
+  "icon": "./assets/icon.png",
+  "privacyPolicyUrl": "https://legal.budna.se/privacy-policy",
+  "supportUrl": "https://connect.budna.se/contact-us",
+  "termsOfServiceUrl": "https://legal.budna.se/terms-of-service",
+  "documentationUrl": "https://github.com/budna-marketplace/plugins"
+}
