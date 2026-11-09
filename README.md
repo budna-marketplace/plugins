@@ -77,11 +77,11 @@ Also verify each client discovers the package and all six skills, and test a rea
 
 ## Releases
 
-Run the local checks before releasing:
+Run the local checks before releasing with Python 3 and Node.js 24.12 or later. The TypeScript tests use Node’s built-in test runner and require no npm dependencies:
 
 ```sh
 python3 scripts/release.py check
-python3 -m unittest discover -s tests -v
+node --test tests/release.test.mts
 ```
 
 Use immutable `vMAJOR.MINOR.PATCH` tags. The numeric version must match `plugin.json`, `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and `gemini-extension.json`. Merge the versioned source to `main`, then create and push a fresh tag:
