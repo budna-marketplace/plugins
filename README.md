@@ -28,6 +28,8 @@ Start a new session after installation. To install from GitHub, replace `.` in t
 
 In Claude web or desktop, add this repository as a marketplace from **Customize → Plugins → Add → Add marketplace**. Add the bundled connector from the plugin’s **Connectors** tab. A repository marketplace is separate from a reviewed public directory listing.
 
+Install Budna in Codex from this repository or the universal `budna-vX.Y.Z.zip` release bundle. The `budna-vX.Y.Z-openai.zip` asset is for ChatGPT plugin import: its explicit no-auth metadata is not accepted by Codex CLI 0.164.0’s strict Agent Plugins MCP parser. The repository and universal bundle keep the portable MCP configuration and connect to the same public endpoint without credentials.
+
 ## Clients and distribution
 
 Claude and Codex package validation, Gemini CLI installation and MCP connection, and Copilot CLI installation have been checked. Other clients still need installation and live task testing. Public listings require a separate submission or catalog review.

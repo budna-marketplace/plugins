@@ -1,6 +1,6 @@
 {
   "name": "budna",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Find and compare new and pre-owned items.",
   "author": {
     "name": "Budna Marketplace AB",
@@ -13,7 +13,7 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Budna",
-    "shortDescription": "Find and compare new and pre-owned items.",
+    "shortDescription": "Find new and pre-owned items",
     "longDescription": "Discover new and pre-owned items on Budna that fit your needs and budget. Compare options, check condition and compatibility, and plan pickup or delivery before you decide.",
     "developerName": "Budna Marketplace AB",
     "category": "Productivity",

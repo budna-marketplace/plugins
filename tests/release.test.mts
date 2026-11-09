@@ -199,6 +199,9 @@ test('required metadata, schemas, and public defaults are enforced', t => {
     ['gemini-extension.json', data => { data.mcpServers.budna.env = { TOKEN: 'secret' }; }],
     ['.claude-plugin/plugin.json', data => { data.icon = '../outside.png'; }],
     ['.codex-plugin/plugin.json', data => { data.mcpServers = './missing.json'; }],
+    ['.codex-plugin/plugin.json', data => { data.interface.shortDescription = ''; }],
+    ['.codex-plugin/plugin.json', data => { data.interface.shortDescription = '   '; }],
+    ['.codex-plugin/plugin.json', data => { data.interface.shortDescription = 'x'.repeat(31); }],
     ['.claude-plugin/marketplace.json', data => { data.plugins[0].source = '../outside'; }],
   ];
   for (const [manifest, change] of cases) {
@@ -207,26 +210,42 @@ test('required metadata, schemas, and public defaults are enforced', t => {
     f.run(['check', '--tag', TAG], /release:/);
     f.write(manifest, original);
   }
-});
-
-test('OpenAI MCP review requires all four public listing URLs', t => {
-  const f = fixture(t);
   const manifest = '.codex-plugin/plugin.json';
   const original = readFileSync(join(f.source, manifest));
-  const urls = {
-    websiteURL: 'https://budna.se',
-    supportURL: 'https://connect.budna.se/contact-us',
-    privacyPolicyURL: 'https://legal.budna.se/privacy-policy',
-    termsOfServiceURL: 'https://legal.budna.se/terms-of-service',
-  };
+  f.updateJson(manifest, data => { data.interface.shortDescription = 'x'.repeat(30); });
+  f.run(['check', '--tag', TAG]);
+  f.write(manifest, original);
+});
+
+test('provider exports include required public listing URLs', t => {
+  const f = fixture(t);
+  const contracts: { manifest: string; target: string; key?: string; provider: string;
+    urls: Record<string, string> }[] = [
+    { manifest: '.codex-plugin/plugin.json', target: 'openai', key: 'interface', provider: 'OpenAI', urls: {
+      websiteURL: 'https://budna.se',
+      supportURL: 'https://connect.budna.se/contact-us',
+      privacyPolicyURL: 'https://legal.budna.se/privacy-policy',
+      termsOfServiceURL: 'https://legal.budna.se/terms-of-service',
+    } },
+    { manifest: '.claude-plugin/plugin.json', target: 'claude', provider: 'Claude', urls: {
+      privacyPolicyUrl: 'https://legal.budna.se/privacy-policy',
+      supportUrl: 'https://connect.budna.se/contact-us',
+      termsOfServiceUrl: 'https://legal.budna.se/terms-of-service',
+      documentationUrl: 'https://github.com/budna-marketplace/plugins',
+    } },
+  ];
   f.build();
-  const bundled = readZip(join(f.out, archiveName('openai'))).find(item => item.name === manifest)!;
-  const metadata = JSON.parse(bundled.content.toString());
-  for (const [field, url] of Object.entries(urls)) {
-    assert.equal(metadata.interface[field], url, `OpenAI bundle must include ${field}`);
-    f.updateJson(manifest, data => { delete data.interface[field]; });
-    f.run(['check', '--tag', TAG], new RegExp(`OpenAI ${field} required`));
-    f.write(manifest, original);
+  for (const contract of contracts) {
+    const original = readFileSync(join(f.source, contract.manifest));
+    const bundled = readZip(join(f.out, archiveName(contract.target))).find(item => item.name === contract.manifest)!;
+    const metadata = JSON.parse(bundled.content.toString());
+    const listing = contract.key ? metadata[contract.key] : metadata;
+    for (const [field, url] of Object.entries(contract.urls)) {
+      assert.equal(listing[field], url, `${contract.provider} bundle must include ${field}`);
+      f.updateJson(contract.manifest, data => { delete (contract.key ? data[contract.key] : data)[field]; });
+      f.run(['check', '--tag', TAG], new RegExp(`${contract.provider} ${field} required`));
+      f.write(contract.manifest, original);
+    }
   }
 });
 

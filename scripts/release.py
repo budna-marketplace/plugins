@@ -112,7 +112,9 @@ def validate_snapshot(files, tag):
     metadata_fields = {"name", "version", "description", "author", "homepage", "repository", "license"}
     allowed_fields = {
         "plugin.json": metadata_fields | {"$schema"},
-        ".claude-plugin/plugin.json": metadata_fields | {"icon", "privacyPolicyUrl"},
+        ".claude-plugin/plugin.json": metadata_fields | {
+            "icon", "privacyPolicyUrl", "supportUrl", "termsOfServiceUrl", "documentationUrl",
+        },
         ".codex-plugin/plugin.json": metadata_fields | {"skills", "mcpServers", "interface", "extensions"},
         "gemini-extension.json": {"name", "version", "description", "mcpServers"},
     }
@@ -135,8 +137,13 @@ def validate_snapshot(files, tag):
         }.items():
             require(manifest.get(key) == expected, f"invalid or inconsistent {key}: {name}")
     claude = manifests[".claude-plugin/plugin.json"]
-    require(claude.get("privacyPolicyUrl") == "https://legal.budna.se/privacy-policy",
-            "Claude privacy policy required")
+    for field, expected in {
+        "privacyPolicyUrl": "https://legal.budna.se/privacy-policy",
+        "supportUrl": "https://connect.budna.se/contact-us",
+        "termsOfServiceUrl": "https://legal.budna.se/terms-of-service",
+        "documentationUrl": "https://github.com/budna-marketplace/plugins",
+    }.items():
+        require(claude.get(field) == expected, f"Claude {field} required")
     file_reference(files, claude.get("icon"))
     codex = manifests[".codex-plugin/plugin.json"]
     require(codex.get("skills") == "./skills/", "Codex must use the shared skills directory")
@@ -146,6 +153,9 @@ def validate_snapshot(files, tag):
     file_reference(files, codex["mcpServers"])
     interface = codex.get("interface", {})
     require(isinstance(interface, dict), "Codex interface required")
+    subtitle = interface.get("shortDescription")
+    require(isinstance(subtitle, str) and subtitle.strip() and len(subtitle) <= 30,
+            "OpenAI shortDescription must contain 1 to 30 characters")
     for field, expected in {
         "websiteURL": "https://budna.se",
         "supportURL": "https://connect.budna.se/contact-us",
