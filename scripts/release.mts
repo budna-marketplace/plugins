@@ -280,6 +280,7 @@ function targetSnapshot(files: Snapshot, target: string): Snapshot {
   require(TARGETS.includes(target), `unknown target: ${target}`);
   const result = new Map([...files].filter(([name]) => TARGET_FILES[target].has(name) || COMMON_FILES.has(name)
     || name.startsWith('assets/') || name.startsWith('skills/')));
+  if (target === 'claude') result.delete('assets/icon.svg');
   if (target === 'openai') {
     const mcp = readJson(result, 'mcp.json');
     mcp.mcpServers.budna.extensions = { 'com.openai': { auth: { type: 'none' } } };
@@ -311,10 +312,13 @@ function build(root: string, tag: string, out: string): void {
   writeFile(join(out, 'SHA256SUMS'), Buffer.from([...archives.keys()].sort().map(name => `${digest(archives.get(name)!)}  ${name}\n`).join('')));
 }
 
-function readChecksums(path: string, tag: string): Map<string, string> {
-  const info = lstatSync(path);
-  require(info.isFile() && info.size <= 4096, 'invalid checksum file');
-  const text = readFileSync(path);
+export function readChecksums(source: string | Buffer, tag: string): Map<string, string> {
+  if (typeof source === 'string') {
+    const info = lstatSync(source);
+    require(info.isFile() && info.size <= 4096, 'invalid checksum file');
+  }
+  const text = Buffer.isBuffer(source) ? source : readFileSync(source);
+  require(text.length <= 4096, 'invalid checksum file');
   require(!text.some(byte => byte > 127), 'invalid SHA256SUMS line');
   const checksums = new Map<string, string>();
   const lines = text.toString('ascii').split(/\r?\n/);
@@ -329,7 +333,7 @@ function readChecksums(path: string, tag: string): Map<string, string> {
   return checksums;
 }
 
-function readZip(content: Buffer): Snapshot {
+export function readZip(content: Buffer): Snapshot {
   function slice(offset: number, size: number): Buffer {
     require(offset >= 0 && size >= 0 && offset + size <= content.length, 'truncated ZIP entry');
     return content.subarray(offset, offset + size);

@@ -319,7 +319,8 @@ test('export uses the complete pinned payload and target manifest subset', t => 
     f.exportTarget(target, undefined, out);
     assert.deepEqual(readFileSync(join(out, name)), bytes, 'retry must preserve the pinned bytes');
     const entries = new Map(readZip(join(out, name)).map(item => [item.name, item.content]));
-    assert.deepEqual([...entries.keys()].sort(), [...common.map(item => item.name), ...extras[target]].sort());
+    const targetCommon = common.filter(item => target !== 'claude' || item.name !== 'assets/icon.svg');
+    assert.deepEqual([...entries.keys()].sort(), [...targetCommon.map(item => item.name), ...extras[target]].sort());
     assert.deepEqual(entries.get('README.md'), readme);
     for (const match of readme.toString().matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
       const href = match[1];
@@ -327,7 +328,7 @@ test('export uses the complete pinned payload and target manifest subset', t => 
       const path = href.split(/[?#]/)[0];
       if (path) assert.ok(entries.has(posix.normalize(decodeURIComponent(path))), `broken README link in ${target}: ${href}`);
     }
-    for (const item of common) {
+    for (const item of targetCommon) {
       if (target === 'openai' && item.name === 'mcp.json') {
         const expected = JSON.parse(item.content.toString());
         expected.mcpServers.budna.extensions = { 'com.openai': { auth: { type: 'none' } } };
@@ -339,6 +340,14 @@ test('export uses the complete pinned payload and target manifest subset', t => 
     if (target === 'openai') {
       const metadata = JSON.parse(entries.get('.codex-plugin/plugin.json')!.toString());
       assert.ok(entries.has(metadata.mcpServers.slice(2)));
+    }
+    if (target === 'claude') {
+      const metadata = JSON.parse(entries.get('.claude-plugin/plugin.json')!.toString());
+      assert.equal(metadata.icon, './assets/icon.png');
+      assert.ok(entries.has('assets/icon.png'));
+      assert.equal(entries.has('assets/icon.svg'), false);
+    } else {
+      assert.ok(entries.has('assets/icon.svg'));
     }
   }
 });
