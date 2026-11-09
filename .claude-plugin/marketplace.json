@@ -1,0 +1,15 @@
+{
+  "name": "budna-marketplace",
+  "owner": {
+    "name": "Budna Marketplace AB"
+  },
+  "plugins": [
+    {
+      "name": "budna",
+      "source": "./"
+    }
+  ],
+  "metadata": {
+    "description": "Budna marketplace tools and Recommerce research skills for Claude and Codex."
+  }
+}

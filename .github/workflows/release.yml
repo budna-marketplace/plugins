@@ -1,0 +1,288 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  release:
+    types: [released]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: >-
+      (github.event_name == 'push' && !github.event.deleted && !github.event.forced) ||
+      (github.event_name == 'release' && !github.event.release.draft && !github.event.release.prerelease)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      commit: ${{ steps.tag.outputs.commit }}
+      archive_sha256: ${{ steps.fingerprint.outputs.archive_sha256 }}
+      checksums_sha256: ${{ steps.fingerprint.outputs.checksums_sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify release tag and main ancestry
+        id: tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          tag_commit="$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")"
+          test "$tag_commit" = "$(git rev-parse HEAD)"
+          git merge-base --is-ancestor "$tag_commit" refs/remotes/origin/main
+          current_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG" | cut -f1)"
+          peeled_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG^{}" | cut -f1)"
+          test "${peeled_tag:-$current_tag}" = "$tag_commit"
+          printf 'tag=%s\ncommit=%s\n' "$RELEASE_TAG" "$tag_commit" >> "$GITHUB_OUTPUT"
+      - name: Check tagged package
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        run: python3 scripts/release.py check --tag "$RELEASE_TAG"
+      - name: Test release packaging
+        run: python3 -m unittest discover -s tests -v
+      - name: Fingerprint package from the approved tag
+        id: fingerprint
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/release.py build --tag "$RELEASE_TAG" --out verified
+          python3 - <<'PY'
+          import hashlib
+          import os
+          import pathlib
+          tag = os.environ["RELEASE_TAG"]
+          paths = {
+              "archive_sha256": pathlib.Path("verified") / f"budna-{tag}.zip",
+              "checksums_sha256": pathlib.Path("verified/SHA256SUMS"),
+          }
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              for key, path in paths.items():
+                  print(f"{key}={hashlib.sha256(path.read_bytes()).hexdigest()}", file=output)
+          PY
+
+  draft:
+    if: github.event_name == 'push'
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+      RELEASE_COMMIT: ${{ needs.verify.outputs.commit }}
+      ARCHIVE_SHA256: ${{ needs.verify.outputs.archive_sha256 }}
+      CHECKSUMS_SHA256: ${{ needs.verify.outputs.checksums_sha256 }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.verify.outputs.commit }}
+          persist-credentials: false
+      - name: Build release archives
+        run: python3 scripts/release.py build --tag "$RELEASE_TAG" --out dist
+      - name: Recheck live tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG" | cut -f1)"
+          peeled_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG^{}" | cut -f1)"
+          test "${peeled_tag:-$current_tag}" = "$RELEASE_COMMIT"
+      - name: Create draft with universal archive and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import subprocess
+          import tempfile
+
+          tag = os.environ["RELEASE_TAG"]
+          repository = os.environ["GITHUB_REPOSITORY"]
+          paths = (pathlib.Path("dist") / f"budna-{tag}.zip", pathlib.Path("dist/SHA256SUMS"))
+          for path, expected in zip(paths, (os.environ["ARCHIVE_SHA256"], os.environ["CHECKSUMS_SHA256"])):
+              if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+                  raise SystemExit(f"Build differs from verified tagged source: {path.name}")
+
+          def gh(*args):
+              return subprocess.run(["gh", *args, "--repo", repository], check=True, text=True, capture_output=True).stdout
+
+          existing = subprocess.run(
+              ["gh", "release", "view", tag, "--repo", repository, "--json", "isDraft,isPrerelease,assets"],
+              text=True, capture_output=True,
+          )
+          if existing.returncode:
+              notes = (
+                  "Universal Budna plugin package and SHA-256 checksums.\n\n"
+                  "Publish this draft from GitHub to request the six environment-gated platform exports. "
+                  "Platform assets are published after their environments approve. "
+                  "Directory listings require separate submission and provider review.\n"
+              )
+              gh("release", "create", tag, "--verify-tag", "--draft", "--title", f"Budna {tag}", "--notes", notes)
+              release = json.loads(gh("release", "view", tag, "--json", "isDraft,isPrerelease,assets"))
+          else:
+              release = json.loads(existing.stdout)
+          if release["isPrerelease"]:
+              raise SystemExit("A stable release tag cannot refer to a prerelease")
+          names = {asset["name"] for asset in release["assets"]}
+          for path in paths:
+              if path.name in names:
+                  with tempfile.TemporaryDirectory() as directory:
+                      gh("release", "download", tag, "--pattern", path.name, "--dir", directory)
+                      downloaded = pathlib.Path(directory) / path.name
+                      if hashlib.sha256(downloaded.read_bytes()).digest() != hashlib.sha256(path.read_bytes()).digest():
+                          raise SystemExit(f"Existing release asset differs: {path.name}")
+              elif release["isDraft"]:
+                  gh("release", "upload", tag, str(path))
+              else:
+                  raise SystemExit(f"Published release is missing its original draft asset: {path.name}")
+          PY
+      - name: Write draft handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf 'Prepared or verified release **%s** with the universal ZIP and SHA256SUMS.\n\n' "$RELEASE_TAG"
+            printf 'If the release is still a draft, publish it from GitHub to start environment approvals for the six platform assets.\n'
+            printf 'The workflow token cannot trigger that release event; a person must publish the draft.\n'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    if: github.event_name == 'release'
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [claude, openai, gemini, cursor, copilot, grok]
+    environment:
+      name: ${{ matrix.target }}
+    env:
+      RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+      RELEASE_COMMIT: ${{ needs.verify.outputs.commit }}
+      ARCHIVE_SHA256: ${{ needs.verify.outputs.archive_sha256 }}
+      CHECKSUMS_SHA256: ${{ needs.verify.outputs.checksums_sha256 }}
+      RELEASE_TARGET: ${{ matrix.target }}
+      RELEASE_ID: ${{ github.event.release.id }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.verify.outputs.commit }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Recheck release after environment approval
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG" | cut -f1)"
+          peeled_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG^{}" | cut -f1)"
+          test "${peeled_tag:-$current_tag}" = "$RELEASE_COMMIT"
+          git merge-base --is-ancestor "$RELEASE_COMMIT" refs/remotes/origin/main
+          gh release view "$RELEASE_TAG" --json databaseId,isDraft,isPrerelease,tagName > release.json
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+          release = json.loads(pathlib.Path("release.json").read_text())
+          if (release["isDraft"] or release["isPrerelease"]
+              or str(release["databaseId"]) != os.environ["RELEASE_ID"]
+              or release["tagName"] != os.environ["RELEASE_TAG"]):
+              raise SystemExit("Release identity or publication state changed")
+          PY
+      - name: Download original release bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release download "$RELEASE_TAG" --pattern "budna-$RELEASE_TAG.zip" --pattern SHA256SUMS --dir dist
+          python3 - <<'PY'
+          import hashlib
+          import os
+          import pathlib
+          tag = os.environ["RELEASE_TAG"]
+          paths = {
+              "ARCHIVE_SHA256": pathlib.Path("dist") / f"budna-{tag}.zip",
+              "CHECKSUMS_SHA256": pathlib.Path("dist/SHA256SUMS"),
+          }
+          for key, path in paths.items():
+              if hashlib.sha256(path.read_bytes()).hexdigest() != os.environ[key]:
+                  raise SystemExit(f"Release asset differs from verified tagged source: {path.name}")
+          PY
+      - name: Verify and export platform package
+        run: >-
+          python3 scripts/release.py export --tag "$RELEASE_TAG" --target "$RELEASE_TARGET"
+          --source "dist/budna-$RELEASE_TAG.zip" --checksums dist/SHA256SUMS --out exported
+      - name: Publish platform assets without overwriting
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG" | cut -f1)"
+          peeled_tag="$(git ls-remote origin "refs/tags/$RELEASE_TAG^{}" | cut -f1)"
+          test "${peeled_tag:-$current_tag}" = "$RELEASE_COMMIT"
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import subprocess
+          import tempfile
+
+          tag = os.environ["RELEASE_TAG"]
+          target = os.environ["RELEASE_TARGET"]
+          repository = os.environ["GITHUB_REPOSITORY"]
+
+          def gh(*args):
+              return subprocess.run(["gh", *args, "--repo", repository], check=True, text=True, capture_output=True).stdout
+
+          release = json.loads(gh("release", "view", tag, "--json", "databaseId,isDraft,isPrerelease,assets"))
+          if release["isDraft"] or release["isPrerelease"] or str(release["databaseId"]) != os.environ["RELEASE_ID"]:
+              raise SystemExit("Release identity or publication state changed")
+          names = {asset["name"] for asset in release["assets"]}
+          archive = pathlib.Path("exported") / f"budna-{tag}-{target}.zip"
+          for path in (archive, archive.with_suffix(".zip.sha256")):
+              if path.name in names:
+                  with tempfile.TemporaryDirectory() as directory:
+                      gh("release", "download", tag, "--pattern", path.name, "--dir", directory)
+                      downloaded = pathlib.Path(directory) / path.name
+                      if hashlib.sha256(downloaded.read_bytes()).digest() != hashlib.sha256(path.read_bytes()).digest():
+                          raise SystemExit(f"Existing platform asset differs: {path.name}")
+              else:
+                  gh("release", "upload", tag, str(path))
+          PY
+      - name: Write platform publication summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$RELEASE_TARGET" in
+            claude) destination='https://claude.ai/directory/manage' ;;
+            openai) destination='https://developers.openai.com/plugins/guides/submit-claude-plugin#submit-a-plugin-with-a-remote-mcp-server' ;;
+            gemini) destination='https://geminicli.com/docs/extensions/releasing/#list-your-extension-in-the-gallery' ;;
+            cursor) destination='https://x.ai/bot/marketplace/submit-a-plugin' ;;
+            copilot) destination='https://github.com/github/awesome-copilot/issues/new?template=external-plugin.yml' ;;
+            grok) destination='https://github.com/xai-org/plugin-marketplace/blob/main/CONTRIBUTING.md' ;;
+            *) exit 1 ;;
+          esac
+          {
+            printf 'Published **%s** package assets to [release %s](https://github.com/%s/releases/tag/%s).\n\n' "$RELEASE_TARGET" "$RELEASE_TAG" "$GITHUB_REPOSITORY" "$RELEASE_TAG"
+            printf 'This publishes a GitHub release export. It does not submit or deploy to a provider directory.\n\n'
+            printf '[Provider submission or integration instructions](%s). Directory forms and reviews remain separate.\n' "$destination"
+          } >> "$GITHUB_STEP_SUMMARY"

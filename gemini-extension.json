@@ -1,0 +1,10 @@
+{
+  "name": "budna",
+  "version": "0.1.0",
+  "description": "Research second-hand purchases on Budna with listing search, comparison, inspection, and collection planning.",
+  "mcpServers": {
+    "budna": {
+      "httpUrl": "https://api.budna.se/mcp"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "budna",
+  "version": "0.1.0",
+  "description": "Research second-hand purchases on Budna with listing search, comparison, inspection, and collection planning.",
+  "author": {
+    "name": "Budna Marketplace AB",
+    "url": "https://budna.se"
+  },
+  "homepage": "https://budna.se",
+  "repository": "https://github.com/budna-marketplace/plugins",
+  "license": "MIT",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Budna",
+    "shortDescription": "Second-hand purchase research",
+    "longDescription": "Search public Budna listings and use Recommerce workflows to compare complete costs, plan compatible kits, inspect items, and assess collection or replacement options.",
+    "developerName": "Budna Marketplace AB",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "websiteURL": "https://budna.se",
+    "defaultPrompt": [
+      "Find a complete used cordless drill delivered to Gothenburg for under 1,000 SEK.",
+      "Compare these used listings by fit, complete cost, and unresolved condition.",
+      "Prepare an inspection checklist for this second-hand listing."
+    ],
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png",
+    "privacyPolicyURL": "https://legal.budna.se/privacy-policy"
+  }
+}

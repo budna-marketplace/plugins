@@ -1,0 +1,14 @@
+{
+  "name": "budna",
+  "version": "0.1.0",
+  "description": "Research second-hand purchases on Budna with listing search, comparison, inspection, and collection planning.",
+  "author": {
+    "name": "Budna Marketplace AB",
+    "url": "https://budna.se"
+  },
+  "homepage": "https://budna.se",
+  "repository": "https://github.com/budna-marketplace/plugins",
+  "license": "MIT",
+  "icon": "./assets/icon.png",
+  "privacyPolicyUrl": "https://legal.budna.se/privacy-policy"
+}
